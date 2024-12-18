@@ -36,14 +36,19 @@ struct SvgBuilder {
     height: i32,
     matrix_width: i32,
     matrix_height: i32,
+    primary_color: String,
+    secondary_color: String,
 }
 
 impl SvgBuilder {
-    fn new(num_days: i32, num_years: i32) -> Self {
+    fn new(num_days: i32, num_years: i32, primary_color: Option<String>, secondary_color: Option<String>) -> Self {
         let matrix_width = (num_days + 1) * CELL_SIZE;
         let matrix_height = num_years * CELL_SIZE;
         let width = X_OFFSET + matrix_width + PADDING * 2;
         let height = Y_OFFSET + matrix_height + PADDING * 4;
+
+        let primary_color = primary_color.unwrap_or_else(|| "#fbbf24".to_string());
+        let secondary_color = secondary_color.unwrap_or_else(|| "#6b7280".to_string());
 
         let mut builder = Self {
             content: String::new(),
@@ -51,6 +56,8 @@ impl SvgBuilder {
             height,
             matrix_width,
             matrix_height,
+            primary_color,
+            secondary_color,
         };
 
         builder.add_header();
@@ -218,11 +225,11 @@ impl SvgBuilder {
     }
 }
 
-pub fn generate_svg(years: Years) -> String {
+pub fn generate_svg(years: Years, primary_color: Option<String>, secondary_color: Option<String>) -> String {
     let num_years = years.len() as i32;
     let num_days = years.first().map_or(0, |(_, days)| days.len()) as i32;
 
-    let mut builder = SvgBuilder::new(num_days, num_years);
+    let mut builder = SvgBuilder::new(num_days, num_years, primary_color, secondary_color);
     builder.add_grid(num_days, num_years);
     builder.add_year_labels(&years.iter().map(|(year, _)| *year).collect::<Vec<_>>());
     builder.add_day_labels(num_days);
@@ -237,7 +244,7 @@ mod tests {
     #[test]
     fn test_empty_years() {
         let years: Years = vec![];
-        let svg = generate_svg(years);
+        let svg = generate_svg(years, None, None);
         assert!(svg.starts_with("<svg"));
         assert!(svg.ends_with("</svg>"));
     }
@@ -245,7 +252,7 @@ mod tests {
     #[test]
     fn test_single_year_no_stars() {
         let years: Years = vec![(2023, vec![0; 25])];
-        let svg = generate_svg(years);
+        let svg = generate_svg(years, None, None);
         assert!(svg.contains("2023"));
         assert!(svg.contains("Total stars: 0"));
     }
@@ -253,7 +260,7 @@ mod tests {
     #[test]
     fn test_silver_and_gold_stars() {
         let years: Years = vec![(2023, vec![0, 1, 2, 0, 1])];
-        let svg = generate_svg(years);
+        let svg = generate_svg(years, None, None);
 
         // Check for silver star
         assert!(svg.contains(r#"class="star silver"#));
@@ -266,7 +273,7 @@ mod tests {
     #[test]
     fn test_multiple_years() {
         let years: Years = vec![(2022, vec![1, 1]), (2023, vec![2, 2])];
-        let svg = generate_svg(years);
+        let svg = generate_svg(years, None, None);
 
         // Check year labels
         assert!(svg.contains("2022"));
@@ -287,7 +294,7 @@ mod tests {
     #[test]
     fn test_style_definitions() {
         let years: Years = vec![(2023, vec![0; 1])];
-        let svg = generate_svg(years);
+        let svg = generate_svg(years, None, None);
 
         // Check for style definitions
         assert!(svg.contains("<style>"));
@@ -307,7 +314,7 @@ mod tests {
         let years: Years = vec![
             (2023, vec![1, 2, 1, 0, 2]), // 2 silver (1+1) and 2 gold (2+2) = 6 total
         ];
-        let svg = generate_svg(years);
+        let svg = generate_svg(years, None, None);
 
         let silver_stars = count_occurrences(&svg, r#"class="star silver"#);
         let gold_stars = count_occurrences(&svg, r#"class="star gold"#);
@@ -315,5 +322,16 @@ mod tests {
         assert_eq!(silver_stars, 2, "Should have exactly 2 silver stars");
         assert_eq!(gold_stars, 2, "Should have exactly 2 gold stars");
         assert!(svg.contains("Total stars: 6"));
+    }
+
+    #[test]
+    fn test_custom_colors() {
+        let years: Years = vec![(2023, vec![1, 2, 1, 0, 2])];
+        let svg = generate_svg(years, Some("#ff0000".to_string()), Some("#00ff00".to_string()));
+
+        // Check for custom silver color
+        assert!(svg.contains(r#".silver { fill: #ff0000; }"#));
+        // Check for custom gold color
+        assert!(svg.contains(r#".gold { fill: #00ff00; }"#));
     }
 }

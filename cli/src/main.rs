@@ -22,6 +22,14 @@ struct Args {
     /// Optional output file for the SVG (defaults to stdout if not provided)
     #[arg(short, long, help = "Optional path for the output SVG file")]
     output: Option<PathBuf>,
+
+    /// Optional color override for primary stars
+    #[arg(long, help = "Optional color override for primary stars")]
+    primary_color: Option<String>,
+
+    /// Optional color override for secondary stars
+    #[arg(long, help = "Optional color override for secondary stars")]
+    secondary_color: Option<String>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -32,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let years = svg::validate_input(&content).map_err(|e| format!("Validation error: {:?}", e))?;
 
-    let svg_content = svg::generate_svg(years);
+    let svg_content = svg::generate_svg(years, args.primary_color, args.secondary_color);
 
     match args.output {
         Some(path) => {
@@ -78,6 +86,8 @@ mod tests {
         let args = Args {
             input: input_path,
             output: Some(output_path.clone()),
+            primary_color: None,
+            secondary_color: None,
         };
 
         let result: Result<(), String> = (|| {
@@ -92,7 +102,7 @@ mod tests {
                 }
             };
 
-            let svg_content = svg::generate_svg(years);
+            let svg_content = svg::generate_svg(years, args.primary_color.clone(), args.secondary_color.clone());
 
             if let Some(path) = args.output.as_ref() {
                 fs::write(path, svg_content)
@@ -119,6 +129,8 @@ mod tests {
         let args = Args {
             input: input_path,
             output: None,
+            primary_color: None,
+            secondary_color: None,
         };
 
         let result: Result<(), String> = (|| {
@@ -139,6 +151,8 @@ mod tests {
         let args = Args {
             input: PathBuf::from("nonexistent.txt"),
             output: None,
+            primary_color: None,
+            secondary_color: None,
         };
 
         let result: Result<(), String> = (|| {

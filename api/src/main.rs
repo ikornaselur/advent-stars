@@ -1,5 +1,5 @@
 use axum::{
-    extract::Path,
+    extract::{Path, Query},
     http::{HeaderMap, HeaderValue, Method},
     response::{IntoResponse, Response},
     routing::{get, Router},
@@ -477,8 +477,15 @@ fn add_response_headers(response: &mut Response, request_id: Uuid) {
     );
 }
 
+#[derive(Deserialize)]
+struct QueryParams {
+    primary_color: Option<String>,
+    secondary_color: Option<String>,
+}
+
 async fn handle_stars(
     Path((user, repo, branch, file)): Path<(String, String, String, String)>,
+    Query(params): Query<QueryParams>,
     axum::extract::State(state): axum::extract::State<AppState>,
     headers: HeaderMap,
 ) -> Response {
@@ -616,7 +623,7 @@ async fn handle_stars(
         }
     };
 
-    let svg_content = generate_svg(validated_data);
+    let svg_content = generate_svg(validated_data, params.primary_color, params.secondary_color);
     state.cache.insert(cache_key.clone(), svg_content.clone());
 
     info!(
